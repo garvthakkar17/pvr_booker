@@ -93,9 +93,13 @@ def health_check():
 
 # --------- Main Execution ---------
 
+# This part is now in the global scope.
+# Gunicorn will execute this code when it imports the file.
+polling_thread = threading.Thread(target=poll_pvr_api, daemon=True)
+polling_thread.start()
+
+# This block is only used for local development (e.g., running `python app.py`)
+# Gunicorn ignores this.
 if __name__ == "__main__":
-    polling_thread = threading.Thread(target=poll_pvr_api, daemon=True)
-    polling_thread.start()
-    
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port)
