@@ -121,10 +121,10 @@ def poll_pvr_api():
             
             # This check is still useful to confirm the result
             if resp.status_code == 200 and '"format":"4dx"' in resp.text.lower():
-                print(f"✅ 4DX detected for {today_date_str}! Sending Telegram notification...")
-                notify_telegram(f"🎬 4DX tickets for {today_date_str} might be available! Check PVR now!")
+                print(f"✅ 4DX detected ! Sending Telegram notification...")
+                notify_telegram(f"🎬 4DX tickets are be available! Check PVR now!")
             else:
-                print(f"No 4DX shows found for {today_date_str}. Status: {resp.status_code}")
+                print(f"No 4DX shows found Status: {resp.status_code}")
 
         except Exception as e:
             print(f"An unexpected error occurred in the polling loop: {e}")
