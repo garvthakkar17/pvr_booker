@@ -3,19 +3,19 @@ import time
 import os
 import threading
 from flask import Flask
+from datetime import date # <-- Import date module
 
 # --------- Initialize Flask App ---------
 app = Flask(__name__)
 
 # --------- Config (Hardcoded as requested) ---------
-JWT = "eyJhbGciOiJSUzI1NiJ9.eyJzdWIiOiIyNzQzMDczMSIsImlhdCI6MTc1Njk2Mjk1MSwiZXhwIjoxNzU5NTU0OTUxfQ.BfeoAwEK1gH2kFdBMBBBRzULR6wK3P8NNxPrVYoFbIE-k8XNL36wpyaaCfVSfX-rU0H6quyct77pP1_9J4cVCwUX7uIXwLUC6PCAqhD3SQVySK-MJZItJT9e2Mnd6SisL2CYbhC7T860EMfBc1VGXg08ModOYShwLFr_M4L8tOJ-SHCu9gag5TfDGRqdTZIyAIpbSuans9DUtXZFW4RG6T8IYhtrV8wRLylmSajeLa6nStGlEs2G0jSVqejAqpU2VkxPKlGX36KIwLFNNGmN0WwD3oc36G0b9yXwJOkoty6lU6Y2smk0Gw9RIYk2mEwjflpduJs98EN_S1f1wtuM8"
+JWT = "eyJhbGciOiJSUzI1NiJ9.eyJzdWIiOiIyNzQzMDczMSIsImlhdCI6MTc1Njk2Mjk1MSwiZXhwIjoxNzU5NTU0OTUxfQ.BfeoAwEK1gH2kFdBMBBBRzULR6wK3P8NNxPrVYoFbIE-k8XNL36wpyaaCfVSfX-rU0H6quyct77pP1_9J4cVCwUX7uIXwLUC6PCAqhD3SQVySK-MJZItJT9e2Mnd6SisL2CYbhC7T860EMfBc1VGXg08ModOYShwLFr_M4L8tOJ-SHCu9gag5TfDGRqdTZIyAIpbSuans9DUtXZFW4RG6T8IYhtrV8wRLylmSajeLa6nStGlEs2G0jSVqejAqpU2VkxPKlGX36KIwLFNNGmN0WwD3oc36G0b9yXwJOkoty6lU6Y2smk0Gw9RIYk2mEwjflpduJs98EN_S1f1wtuM8A"
 TELEGRAM_BOT_TOKEN = "8022940530:AAF4AmoGS32Nqiyk-XvShe4wfXxQGV6c1eM"
 CHAT_IDS = ["720650381", "1345972178"]
 
 # --------- Core Logic ---------
 
 def notify_telegram(message):
-    """Sends a message to all configured Telegram chat IDs."""
     for chat_id in CHAT_IDS:
         try:
             url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
@@ -25,7 +25,6 @@ def notify_telegram(message):
             print(f"Error sending Telegram notification to {chat_id}: {e}")
 
 def check_stop_command(last_update_id):
-    """Checks Telegram messages for a 'stop' command."""
     try:
         url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/getUpdates?offset={last_update_id + 1}"
         resp = requests.get(url, timeout=5)
@@ -47,12 +46,36 @@ def check_stop_command(last_update_id):
         return False, last_update_id
 
 def poll_pvr_api():
-    """The main polling loop that runs continuously."""
     print("Starting 24x7 polling for 4DX shows...")
     
     url = "https://api3.pvrcinemas.com/api/v1/booking/content/msessions"
-    headers = { "Authorization": f"Bearer {JWT}", "Content-Type": "application/json", "Platform": "WEBSITE", "City": "Ahmedabad", "Country": "INDIA", "Chain": "PVR" }
-    payload = { "city": "Ahmedabad", "mid": "31738", "experience": "4DX", "dated": "2025-09-07" }
+    
+    # ================== UPDATED SECTION START ==================
+
+    # Full headers to mimic a real browser request
+    headers = {
+        "Host": "api3.pvrcinemas.com",
+        "Sec-Ch-Ua-Platform": '"Windows"',
+        "Authorization": f"Bearer {JWT}",
+        "Accept-Language": "en-US,en;q=0.9",
+        "Sec-Ch-Ua": '"Not)A;Brand";v="8", "Chromium";v="138"',
+        "Sec-Ch-Ua-Mobile": "?0",
+        "Chain": "PVR",
+        "Country": "INDIA",
+        "Appversion": "1.0",
+        "City": "Ahmedabad",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36",
+        "Accept": "application/json, text/plain, */*",
+        "Content-Type": "application/json",
+        "Platform": "WEBSITE",
+        "Origin": "https://www.pvrcinemas.com",
+        "Sec-Fetch-Site": "same-site",
+        "Sec-Fetch-Mode": "cors",
+        "Sec-Fetch-Dest": "empty",
+        "Priority": "u=1, i"
+    }
+    
+    # ================== UPDATED SECTION END ==================
     
     last_update_id = 0
     try:
@@ -71,13 +94,37 @@ def poll_pvr_api():
                 notify_telegram("🛑 Ticket checker has been stopped by user command.")
                 os._exit(0)
 
+            # ================== UPDATED SECTION START ==================
+            
+            # Get today's date automatically in YYYY-MM-DD format
+            
+            # Full payload to match your provided request
+            payload = {
+                "city": "Ahmedabad",
+                "mid": "31738",
+                "experience": "ALL",
+                "specialTag": "ALL",
+                "lat": "22.83694592",
+                "lng": "72.59033180",
+                "lang": "ALL",
+                "format": "4DX",
+                "dated": "2025-09-04", # Using the dynamic date
+                "time": "08:00-24:00",
+                "cinetype": "ALL",
+                "hc": "ALL",
+                "adFree": False
+            }
+            
+            # ================== UPDATED SECTION END ==================
+            
             resp = requests.post(url, json=payload, headers=headers, timeout=10)
             
+            # This check is still useful to confirm the result
             if resp.status_code == 200 and '"format":"4dx"' in resp.text.lower():
-                print("✅ 4DX detected! Sending Telegram notification...")
-                notify_telegram("🎬 4DX tickets might be available! Check PVR now!")
+                print(f"✅ 4DX detected for {today_date_str}! Sending Telegram notification...")
+                notify_telegram(f"🎬 4DX tickets for {today_date_str} might be available! Check PVR now!")
             else:
-                print(f"No 4DX shows found yet. Status: {resp.status_code}")
+                print(f"No 4DX shows found for {today_date_str}. Status: {resp.status_code}")
 
         except Exception as e:
             print(f"An unexpected error occurred in the polling loop: {e}")
@@ -88,18 +135,13 @@ def poll_pvr_api():
 
 @app.route('/')
 def health_check():
-    """This endpoint is used by the pinger service to keep the app alive."""
     return "PVR 4DX Checker is running.", 200
 
 # --------- Main Execution ---------
 
-# This part is now in the global scope.
-# Gunicorn will execute this code when it imports the file.
 polling_thread = threading.Thread(target=poll_pvr_api, daemon=True)
 polling_thread.start()
 
-# This block is only used for local development (e.g., running `python app.py`)
-# Gunicorn ignores this.
 if __name__ == "__main__":
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port)
