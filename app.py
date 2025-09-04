@@ -5,13 +5,15 @@ import threading
 from flask import Flask
 from datetime import date
 
+# --------- Initialize Flask App ---------
 app = Flask(__name__)
 
-# --------- Config (Hardcoded) ---------
-JWT = "eyJhbGciOiJSUzI1NiJ9.eyJzdWIiOiIyNzQzMDczMSIsImlhdCI6MTc1Njk4NTg1NCwiZXhwIjoxNzU5NTc3ODU0fQ.TOxysPewT3bJgOQSWUGcMqERUF7wCPbQ4xFRQjZ9zT7td_psbCHE5oDs2NyWCYOZbmQ5i_A7Cf_TfAP9cQoJMpuNYobn1RRtZDRIC03Lnu0jq4brkbWkZzwN9wMSWOYZwW-RMQ0gPyM8nZuRCmGmdM9_YhOxLxEob_iMLD7I_wL5XhVqr-mL4VtqR80LbUNi5OjXWv2GMSi9quxaipqX_6BgkLs9R4hsUthXgcJBwYhViG__wD_vZ0ooPV5EBQz64s6Qs52TiOJ6flrAaJlq2LvQNnv3aMGT2-uGiXAiEIuPzugr6S03aNH3Ko_ZDaqahA7mDKQPbZKS3aFy4zjXIA"
+# --------- Config (Hardcoded JWT & Telegram) ---------
+JWT = "eyJhbGciOiJSUzI1NiJ9.eyJzdWIiOiIyNzQzMDczMSIsImlhdCI6MTc1Njk2Mjk1MSwiZXhwIjoxNzU5NTU0OTUxfQ.BfeoAwEK1gH2kFdBMBBBRzULR6wK3P8NNxPrVYoFbIE-k8XNL36wpyaaCfVSfX-rU0H6quyct77pP1_9J4cVCwUX7uIXwLUC6PCAqhD3SQVySK-MJZItJT9e2Mnd6SisL2CYbhC7T860EMfBc1VGXg08ModOYShwLFr_M4L8tOJ-SHCu9gag5TfDGRqdTZIyAIpbSuans9DUtXZFW4RG6T8IYhtrV8wRLylmSajeLa6nStGlEs2G0jSVqejAqpU2VkxPKlGX36KIwLFNNGmN0WwD3oc36G0b9yXwJOkoty6lU6Y2smk0Gw9RIYk2mEwjflpduJs98EN_S1f1wtuM8A"
 TELEGRAM_BOT_TOKEN = "8022940530:AAF4AmoGS32Nqiyk-XvShe4wfXxQGV6c1eM"
 CHAT_IDS = ["720650381", "1345972178"]
 
+# --------- Telegram Functions ---------
 def notify_telegram(message):
     for chat_id in CHAT_IDS:
         try:
@@ -42,24 +44,35 @@ def check_stop_command(last_update_id):
         print(f"Error checking Telegram stop command: {e}")
         return False, last_update_id
 
+# --------- PVR Polling Logic ---------
 def poll_pvr_api():
     print("🚀 Starting 24x7 polling for 4DX shows...")
-    
+
     url = "https://api3.pvrcinemas.com/api/v1/booking/content/msessions"
-    
+
     headers = {
         "Host": "api3.pvrcinemas.com",
+        "Sec-Ch-Ua-Platform": '"Windows"',
         "Authorization": f"Bearer {JWT}",
+        "Accept-Language": "en-US,en;q=0.9",
+        "Sec-Ch-Ua": '"Not)A;Brand";v="8", "Chromium";v="138"',
+        "Sec-Ch-Ua-Mobile": "?0",
         "Chain": "PVR",
-        "City": "Ahmedabad",
-        "Content-Type": "application/json",
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
-        "Accept": "application/json, text/plain, */*",
+        "Country": "INDIA",
         "Appversion": "1.0",
+        "City": "Ahmedabad",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36",
+        "Accept": "application/json, text/plain, */*",
+        "Content-Type": "application/json",
         "Platform": "WEBSITE",
-        "Origin": "https://www.pvrcinemas.com"
+        "Origin": "https://www.pvrcinemas.com",
+        "Sec-Fetch-Site": "same-site",
+        "Sec-Fetch-Mode": "cors",
+        "Sec-Fetch-Dest": "empty",
+        "Accept-Encoding": "gzip, deflate, br",
+        "Priority": "u=1, i"
     }
-    
+
     last_update_id = 0
     try:
         updates = requests.get(f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/getUpdates").json().get("result", [])
@@ -81,7 +94,7 @@ def poll_pvr_api():
             payload = {
                 "city": "Ahmedabad",
                 "mid": "31738",
-                "experience": "4DX",   # Set experience to 4DX explicitly
+                "experience": "4DX",
                 "specialTag": "ALL",
                 "lat": "22.83694592",
                 "lng": "72.59033180",
@@ -95,24 +108,25 @@ def poll_pvr_api():
             }
 
             resp = requests.post(url, json=payload, headers=headers, timeout=10)
-            
-            # Check for 4DX shows
-            if resp.status_code == 200 and '"format":"4dx"' in resp.text.lower():
-                print(f"✅ 4DX detected! Sending Telegram notification...")
+            raw_text = resp.text.lower()
+
+            if resp.status_code == 200 and '"format":"4dx"' in raw_text:
+                print("✅ 4DX detected! Sending Telegram notification...")
                 notify_telegram("🎬 4DX tickets available! Book now!")
             else:
-                print(f"No 4DX shows found. Status code: {resp.status_code}")
+                print(f"No 4DX shows yet. Status: {resp.status_code}")
 
         except Exception as e:
             print(f"Polling error: {e}")
 
         time.sleep(10)
 
+# --------- Flask Route for Health Check ---------
 @app.route('/')
 def health_check():
-    return "PVR 4DX Checker running.", 200
+    return "PVR 4DX Checker is running.", 200
 
-# --------- Main ---------
+# --------- Main Execution ---------
 polling_thread = threading.Thread(target=poll_pvr_api, daemon=True)
 polling_thread.start()
 
