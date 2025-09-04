@@ -6,24 +6,33 @@ import sys
 # --------- Config from Environment Variables ---------
 JWT = os.environ.get("JWT")
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
-CHAT_ID = os.environ.get("CHAT_ID")
 
-if not JWT or not TELEGRAM_BOT_TOKEN or not CHAT_ID:
-    raise ValueError("Please set JWT, TELEGRAM_BOT_TOKEN, and CHAT_ID environment variables.")
+# Multiple chat IDs
+CHAT_IDS = [
+    os.environ.get("CHAT_ID_1"),
+    os.environ.get("CHAT_ID_2"),
+    os.environ.get("CHAT_ID_3"),
+    # Add more as needed
+]
+CHAT_IDS = [c for c in CHAT_IDS if c]
+
+if not JWT or not TELEGRAM_BOT_TOKEN or not CHAT_IDS:
+    raise ValueError("Please set JWT, TELEGRAM_BOT_TOKEN, and at least one CHAT_ID_X environment variable.")
 
 # Telegram functions
 def notify_telegram(message):
-    try:
-        url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
-        data = {"chat_id": CHAT_ID, "text": message}
-        resp = requests.post(url, data=data)
-        if resp.status_code != 200:
-            print(f"Telegram notification failed: {resp.text}")
-    except Exception as e:
-        print(f"Error sending Telegram notification: {e}")
+    for chat_id in CHAT_IDS:
+        try:
+            url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
+            data = {"chat_id": chat_id, "text": message}
+            resp = requests.post(url, data=data)
+            if resp.status_code != 200:
+                print(f"Failed to send to {chat_id}: {resp.text}")
+        except Exception as e:
+            print(f"Error sending to {chat_id}: {e}")
 
 def check_stop_command(last_update_id):
-    """Check Telegram messages for 'stop' command."""
+    """Check Telegram messages from authorized chats for 'stop' command."""
     try:
         url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/getUpdates"
         resp = requests.get(url)
@@ -32,8 +41,10 @@ def check_stop_command(last_update_id):
             update_id = update["update_id"]
             if update_id <= last_update_id:
                 continue
-            message_text = update.get("message", {}).get("text", "").lower()
-            if message_text.strip() == "stop":
+            message = update.get("message", {})
+            message_text = message.get("text", "").lower()
+            chat_id = str(message.get("chat", {}).get("id"))
+            if message_text.strip() == "stop" and chat_id in CHAT_IDS:
                 return True, update_id
             last_update_id = update_id
         return False, last_update_id
