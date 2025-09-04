@@ -7,14 +7,11 @@ import sys
 JWT = os.environ.get("JWT")
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
 
-# Multiple chat IDs
-CHAT_IDS = [
-    os.environ.get("CHAT_ID_1"),
-    os.environ.get("CHAT_ID_2"),
-    os.environ.get("CHAT_ID_3"),
-    # Add more as needed
-]
-CHAT_IDS = [c for c in CHAT_IDS if c]
+# Individual chat IDs as environment variables
+CHAT_ID_1 = os.environ.get("CHAT_ID_1")
+CHAT_ID_2 = os.environ.get("CHAT_ID_2")
+# Add more if needed
+CHAT_IDS = [cid for cid in [CHAT_ID_1, CHAT_ID_2] if cid]
 
 if not JWT or not TELEGRAM_BOT_TOKEN or not CHAT_IDS:
     raise ValueError("Please set JWT, TELEGRAM_BOT_TOKEN, and at least one CHAT_ID_X environment variable.")
@@ -27,12 +24,12 @@ def notify_telegram(message):
             data = {"chat_id": chat_id, "text": message}
             resp = requests.post(url, data=data)
             if resp.status_code != 200:
-                print(f"Failed to send to {chat_id}: {resp.text}")
+                print(f"Telegram notification failed for {chat_id}: {resp.text}")
         except Exception as e:
-            print(f"Error sending to {chat_id}: {e}")
+            print(f"Error sending Telegram notification to {chat_id}: {e}")
 
 def check_stop_command(last_update_id):
-    """Check Telegram messages from authorized chats for 'stop' command."""
+    """Check Telegram messages for 'stop' command."""
     try:
         url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/getUpdates"
         resp = requests.get(url)
@@ -41,9 +38,8 @@ def check_stop_command(last_update_id):
             update_id = update["update_id"]
             if update_id <= last_update_id:
                 continue
-            message = update.get("message", {})
-            message_text = message.get("text", "").lower()
-            chat_id = str(message.get("chat", {}).get("id"))
+            message_text = update.get("message", {}).get("text", "").lower()
+            chat_id = str(update.get("message", {}).get("chat", {}).get("id"))
             if message_text.strip() == "stop" and chat_id in CHAT_IDS:
                 return True, update_id
             last_update_id = update_id
@@ -98,7 +94,22 @@ payload = {
 
 print("Starting 24x7 polling for 4DX shows...")
 
-last_update_id = 0  # to track Telegram messages
+# Initialize last_update_id at startup to ignore old stop commands
+def get_latest_update_id():
+    try:
+        url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/getUpdates"
+        resp = requests.get(url)
+        updates = resp.json().get("result", [])
+        if updates:
+            return max(update["update_id"] for update in updates)
+        else:
+            return 0
+    except Exception as e:
+        print(f"Error fetching latest update_id: {e}")
+        return 0
+
+last_update_id = get_latest_update_id()
+print(f"Starting polling... Ignoring old messages. Last update ID: {last_update_id}")
 
 while True:
     try:
