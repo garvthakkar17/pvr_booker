@@ -56,7 +56,7 @@ def poll_pvr_api():
     headers = {
         "Host": "api3.pvrcinemas.com",
         "Sec-Ch-Ua-Platform": '"Windows"',
-        "Authorization": f"Bearer {JWT}",
+        "Authorization": "Bearer {JWT}",
         "Accept-Language": "en-US,en;q=0.9",
         "Sec-Ch-Ua": '"Not)A;Brand";v="8", "Chromium";v="138"',
         "Sec-Ch-Ua-Mobile": "?0",
