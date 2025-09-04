@@ -1,20 +1,19 @@
-import os
 import requests
 import time
 import sys
 
-# --------- Config from Environment Variables ---------
-JWT = os.environ.get("JWT")
-TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
+# --------- Config ---------
+JWT = "eyJhbGciOiJSUzI1NiJ9.eyJzdWIiOiIyNzQzMDczMSIsImlhdCI6MTc1Njk2Mjk1MSwiZXhwIjoxNzU5NTU0OTUxfQ.BfeoAwEK1gH2kFdBMBBBRzULR6wK3P8NNxPrVYoFbIE-k8XNL36wpyaaCfVSfX-rU0H6quyct77pP1_9J4cVCwUX7uIXwLUC6PCAqhD3SQVySK-MJZItJT9e2Mnd6SisL2CYbhC7T860EMfBc1VGXg08ModOYShwLFr_M4L8tOJ-SHCu9gag5TfDGRqdTZIyAIpbSuans9DUtXZFW4RG6T8IYhtrV8wRLylmSajeLa6nStGlEs2G0jSVqejAqpU2VkxPKlGX36KIwLFNNGmN0WwD3oc36G0b9yXwJOkoty6lU6Y2smk0Gw9RIYk2mEwjflpduJs98EN_S1f1wtuM8A"
+TELEGRAM_BOT_TOKEN = "8022940530:AAF4AmoGS32Nqiyk-XvShe4wfXxQGV6c1eM"
 
-# Individual chat IDs as environment variables
-CHAT_ID_1 = os.environ.get("CHAT_ID_1")
-CHAT_ID_2 = os.environ.get("CHAT_ID_2")
+# Individual chat IDs
+CHAT_ID_1 = "720650381"
+CHAT_ID_2 = "1345972178"
 # Add more if needed
-CHAT_IDS = [cid for cid in [CHAT_ID_1, CHAT_ID_2] if cid]
+CHAT_IDS = [CHAT_ID_1, CHAT_ID_2]
 
 if not JWT or not TELEGRAM_BOT_TOKEN or not CHAT_IDS:
-    raise ValueError("Please set JWT, TELEGRAM_BOT_TOKEN, and at least one CHAT_ID_X environment variable.")
+    raise ValueError("Please set JWT, TELEGRAM_BOT_TOKEN, and at least one CHAT_ID.")
 
 # Telegram functions
 def notify_telegram(message):
@@ -94,13 +93,14 @@ payload = {
 
 print("Starting 24x7 polling for 4DX shows...")
 
-# Initialize last_update_id at startup to ignore old stop commands
+# Initialize last_update_id at startup
 def get_latest_update_id():
     try:
         url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/getUpdates"
         resp = requests.get(url)
         updates = resp.json().get("result", [])
         if updates:
+            # return the highest update_id
             return max(update["update_id"] for update in updates)
         else:
             return 0
@@ -110,6 +110,7 @@ def get_latest_update_id():
 
 last_update_id = get_latest_update_id()
 print(f"Starting polling... Ignoring old messages. Last update ID: {last_update_id}")
+ # to track Telegram messages
 
 while True:
     try:
